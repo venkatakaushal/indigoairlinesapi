@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="d346443c-29a7-4c97-aec1-65f543ec6ba7" >
+		<http:request-connection host="${secure::indigo.host}" port="${secure::indigo.port}" usePersistentConnections="false" connectionIdleTimeout="40000"/>
+	</http:request-config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="939e99cf-c67f-4c7f-b331-c2aafd43d88c" file="indigoairlinesapi-DEV.properties" key="abcdefghijklmnop" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<flow name="IndigoFlightsFlow" doc:id="c5a1a3ce-5283-4f3d-9709-0f19e2b7a9dc" >
+		<logger level="INFO" doc:name="Logger" doc:id="5094eadc-92ca-40f0-a726-fb243b0f5026" message="data in this flow ........#[attributes.queryParams]"/>
+		<http:request method="GET" doc:name="Request" doc:id="3cf5599c-bbaa-4797-8bd4-20071d0c63c3" config-ref="HTTP_Request_configuration" path="/api/getFlights">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	from : attributes.queryParams.source,
+	to : attributes.queryParams.destination,
+	depatureDate : attributes.queryParams.doj
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="a93e91a6-7226-434b-b960-0f5fd12db535" message="final response from indigo flights...............#[payload]"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2b224de6-185b-4b27-9d8f-f0ab6e451d78" type="ANY">
+				<ee:transform doc:name="Transform Message" doc:id="1a773fbb-8555-4699-aa4c-752e1b558a51" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	statuscode:500,
+	message:"unable to process your request"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
